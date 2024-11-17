@@ -1,0 +1,7 @@
+geopandas
+matplotlib
+pandas
+sci-kit-learn
+tqdm
+pytorch
+networkx
