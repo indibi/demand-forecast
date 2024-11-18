@@ -1,7 +1,10 @@
-geopandas
-matplotlib
+numpy
 pandas
-sci-kit-learn
-tqdm
+matplotlib
 pytorch
 networkx
+geopandas
+contextly
+bokeh
+sci-kit-learn
+tqdm
