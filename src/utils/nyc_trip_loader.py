@@ -91,6 +91,10 @@ class NYCTripData:
         
         if (DATA_DIR / (dataset_name + '.parquet')).exists():
             self.trip_data = pd.read_parquet(DATA_DIR / (dataset_name + '.parquet'))
+            # Add weather data
+            start_date = self.trip_data.index.get_level_values('datetime').min()
+            end_date = self.trip_data.index.get_level_values('datetime').max()
+            weather_data = self._load_weather_data(start_date, end_date)
         else:
             trip_counts = load_and_count_trip_records(start_month, end_month, dataset=dataset, freq=freq)
             zones_to_discard = {i for i in range(1,266)}.difference(set(self.taxi_zones.zones['LocationID']))
