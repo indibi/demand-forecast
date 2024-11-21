@@ -20,7 +20,11 @@ parts/
 sdist/
 var/
 wheels/
-#data/
+# data/
+data/fhvhv_trip_records/
+data/green_taxi_trip_records/
+data/fhv_taxi_trip_records/
+data/yellow_taxi_trip_records/
 share/python-wheels/
 *.egg-info/
 .installed.cfg

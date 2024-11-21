@@ -6,5 +6,6 @@ networkx
 geopandas
 contextly
 bokeh
+statsmodels
 sci-kit-learn
 tqdm

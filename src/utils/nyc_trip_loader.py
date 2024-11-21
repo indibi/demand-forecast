@@ -14,7 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = BASE_DIR / 'data'
 YELLOW_DIR = DATA_DIR / 'yellow_taxi_trip_records'
 GREEN_DIR = DATA_DIR / 'green_taxi_trip_records'
-FHV_DIR = DATA_DIR / 'for_hire_vehicle_trip_records'
+FHVHV_DIR = DATA_DIR / 'fhvhv_trip_records'
+FHV_DIR = DATA_DIR / 'fhv_trip_records'
 TAXI_ZONES_DIR = DATA_DIR / 'taxi_zones'
 PRECOMPUTED_GRAPH_DIR = TAXI_ZONES_DIR / 'precomputed_graphs'
 
@@ -43,7 +44,7 @@ class NYCTripData:
         freq : str, optional
             The period to aggregate the trip counts. Default is 'h' for hourly
         dataset : str, optional
-            The dataset to load. Default is 'yellow'. Other options are 'green' and 'for_hire'
+            The dataset to load. Default is 'yellow'. Other options are 'green', 'fhvhv' and 'fhv'
         taxi_zones : TaxiZones or list of int, or TaxiZones instance. optional
             The taxi zones to load. Default is `TaxiZones` which loads all the zones.
             If a list of integers is provided, it loads only the specified zones.
@@ -164,53 +165,26 @@ class NYCTripData:
         return utc_dt.strftime(dt_format)
 
     def _load_weather_data(self, start_date, end_date):
-        
-        start_date = self.naive_dt_string_to_utc(start_date)
-        end_date = self.naive_dt_string_to_utc(end_date)
-        #Read in data and create datetime column from dt_iso
         weather_data = pd.read_csv(DATA_DIR / 'nyc_weather_bulk_2000_2024.csv')
-        weather_data['datetime'] = pd.to_datetime(weather_data['dt_iso'], format='%Y-%m-%d %H:%M:%S +0000 UTC', utc=True).dt.tz_convert('US/Eastern')
+        weather_data['datetime'] = pd.to_datetime(weather_data['dt_iso'], format='%Y-%m-%d %H:%M:%S +0000 UTC', utc=True).dt.tz_convert('US/Eastern').dt.tz_localize(None)
         weather_data.drop(columns=['dt', 'dt_iso'], inplace=True)
         weather_data.set_index('datetime', inplace=True)
         
-        #isolate data by weather features and date range
         weather_data = weather_data[self.weather_features]
-        
         date_range = pd.date_range(start_date, end_date, freq='h')
+
         weather_filter = (weather_data.index >= start_date) & \
                         (weather_data.index <= end_date)
         weather_data = weather_data[weather_filter]
+        duplicate_dates = weather_data.index.duplicated(keep='first')
+        weather_data = weather_data[~duplicate_dates]
+        weather_data = weather_data.reindex(date_range, method='ffill', copy=True)
         
-        # Create one-hot encoding using pandas get_dummies
-        one_hot_encoded = pd.get_dummies(weather_data['weather_main'],'encoding')
 
-        # Concatenate one-hot encoded columns with the original DataFrame
-        weather_data_encoded = pd.concat([weather_data, one_hot_encoded], axis=1)
-        # Optionally, drop the original 'weather_description' column
-        weather_data_encoded = weather_data.drop('weather_main', axis=1)
-        
-        # Get one-hot encoded column names
-        one_hot_cols = [col for col in weather_data_encoded.columns if 'encoded_' in col] 
-        non_one_hot_cols = [col for col in weather_data_encoded.columns if col not in one_hot_cols and col != 'datetime']
-
-        
-        # Group by 'dt_iso' and apply custom aggregation
-        #There are multiple rows for the same dt_iso, just with diff weather_main
-        #for the non-encoded columns, take the first row as there are no conflicts in the non-encoded cols
-        #for the encoded columns, essentially perform an "or" operation
-        weather_data = weather_data_encoded.groupby('datetime').agg(
-            {
-                **{col: 'first' for col in non_one_hot_cols},  
-                **{col: 'max' for col in one_hot_cols}  
-            }
-        ).reset_index()
-        
-        weather_data['datetime'] = weather_data['datetime'].dt.tz_localize(None)
-        weather_data.set_index('datetime', inplace=True)
-        #fill in NA values with 0
         weather_data.fillna(FILL_NA_VALUES, inplace=True)
         weather_data.fillna(method='ffill', inplace=True)
-        
+        weather_data = pd.get_dummies(weather_data,
+                                    prefix=self.column_to_onehot_encode)
         return weather_data
 
 
@@ -270,7 +244,7 @@ def load_and_count_trip_records(start_month, end_month=None, freq='h', dataset='
     freq : str, optional
         The period to aggregate the trip counts. Default is 'h' for hourly
     dataset : str, optional
-        The dataset to load. Default is 'yellow'. Other options are 'green' and 'for_hire'
+        The dataset to load. Default is 'yellow'. Other options are 'green', 'fhvhv', 'fhv'
     columns : list of str, optional
         The columns to load from the trip records. Default is ['tpep_pickup_datetime',
         'tpep_dropoff_datetime', 'PULocationID', 'DOLocationID']
@@ -283,14 +257,32 @@ def load_and_count_trip_records(start_month, end_month=None, freq='h', dataset='
         end_month = start_month
     if dataset == 'yellow':
         dataset_path = YELLOW_DIR
+        dataset_prefix = 'yellow_tripdata_'
     elif dataset == 'green':
         dataset_path = GREEN_DIR
-    elif dataset == 'for_hire':
+        dataset_prefix = 'green_tripdata_'
+    elif dataset == 'fhv':
+        dataset_prefix = 'fhv_tripdata_'
         dataset_path = FHV_DIR
+    elif dataset == 'fhvhv':
+        dataset_prefix = 'fhvhv_tripdata_'
+        dataset_path = FHVHV_DIR
     else:
-        raise ValueError("Invalid dataset. Please specify 'yellow', 'green', or 'for_hire'")
+        raise ValueError("Invalid dataset. Please specify 'yellow', 'green', 'fhv' or 'fhvhv'")
     if not dataset_path.exists():
         raise FileNotFoundError(f"Directory for '{dataset}' is not found in {dataset_path}")
+    yellow_to_fhvhv_columns = {
+        'tpep_pickup_datetime': 'pickup_datetime',
+        'tpep_dropoff_datetime': 'dropoff_datetime',
+        }
+    yellow_to_fhv_columns = {
+        'tpep_pickup_datetime': 'pickup_datetime',
+        'tpep_dropoff_datetime': 'dropOff_datetime',
+        'PULocationID': 'PUlocationID',
+        'DOLocationID': 'DOlocationID',
+    }
+    fhvhv_to_yellow_columns = { v: k for k, v in yellow_to_fhvhv_columns.items()}
+    fhv_to_yellow_columns = { v:k for k, v in yellow_to_fhv_columns.items()}
     
     if columns is None:
         columns =  ['tpep_pickup_datetime','tpep_dropoff_datetime', 'PULocationID','DOLocationID']
@@ -299,8 +291,20 @@ def load_and_count_trip_records(start_month, end_month=None, freq='h', dataset='
     months = [date.strftime('%Y-%m') for date in dates]
     monthly_trip_counts = []
     for i, month in tqdm(enumerate(months), desc='Processing monthly records'):
-        monthly_trip_record = pd.read_parquet(dataset_path / f'yellow_tripdata_{month}.parquet',
-                                            columns=columns)
+        if dataset == 'fhvhv':
+            columns = [c_name if c_name not in yellow_to_fhvhv_columns else yellow_to_fhvhv_columns[c_name] for c_name in columns]
+            monthly_trip_record = pd.read_parquet(dataset_path / (dataset_prefix+f'{month}.parquet'),
+                                                columns=columns)
+            monthly_trip_record.rename(columns=fhvhv_to_yellow_columns, inplace=True)
+        elif dataset == 'yellow':
+            monthly_trip_record = pd.read_parquet(dataset_path / (dataset_prefix+f'{month}.parquet'),
+                                                                 columns=columns)
+        elif dataset == 'fhv':
+            columns = [c_name if c_name not in yellow_to_fhv_columns else yellow_to_fhv_columns[c_name] for c_name in columns]
+            monthly_trip_record = pd.read_parquet(dataset_path / (dataset_prefix+f'{month}.parquet'),
+                                                columns=columns)
+            monthly_trip_record.rename(columns=fhv_to_yellow_columns, inplace=True)
+
         early_rows, late_rows, pu_lateroe_than_do, pul_nan, do_nan = detect_faulty_records_in_monthly_record(monthly_trip_record, month)
         monthly_trip_record = monthly_trip_record[~(early_rows | late_rows | pu_lateroe_than_do | pul_nan | do_nan)]
 
