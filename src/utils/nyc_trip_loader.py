@@ -7,7 +7,7 @@ from tqdm import tqdm
 import torch
 # from torchvision import datasets
 # from torchvision.transforms import ToTensor
-
+import pytz
 from src.utils.nyc_taxi_zones import TaxiZones
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -64,8 +64,8 @@ class NYCTripData:
         self.dataset = dataset
         self.freq = freq
         self.weather_features = kwargs.get('weather_features', 
-                                           ['dt_iso', 'temp', 'temp_min', 'temp_max', 'pressure', 'humidity',
-                    'wind_speed', 'wind_deg', 'wind_gust', 'clouds_all', 'rain_1h','rain_3h', 'snow_1h','snow_3h','weather_main']])
+                                           ['temp', 'temp_min', 'temp_max', 'pressure', 'humidity',
+                    'wind_speed', 'wind_deg', 'wind_gust', 'clouds_all', 'rain_1h','rain_3h', 'snow_1h','snow_3h','weather_main'])
         self.column_to_onehot_encode = kwargs.get('column_to_onehot_encode', 
                                                   ['weather_main'])
         self.taxi_zones = None
@@ -145,11 +145,31 @@ class NYCTripData:
             raise ValueError("The number of locations and times in the trip data is not consistent")
         self.trip_data = multiindex_spatio_temporal_df_to_tensor(self.trip_data)
 
+    def naive_dt_string_to_utc(self, dt_string, dt_format='%Y-%m-%d %H:%M:%S'):
+        """
+        Converts a naive datetime string (assumed to be in ET) to a UTC string.
+        
+        Args:
+            dt_string: A string representing the naive datetime.
+            dt_format: The format of the datetime string (default: '%Y-%m-%d %H:%M:%S').
+        
+        Returns:
+            A string representing the input time in UTC.
+        """
+
+        eastern = pytz.timezone('US/Eastern')
+        localized_dt = eastern.localize(pd.to_datetime(dt_string, format=dt_format))
+        utc_dt = localized_dt.astimezone(pytz.utc)
+        
+        return utc_dt.strftime(dt_format)
 
     def _load_weather_data(self, start_date, end_date):
+        
+        start_date = self.naive_dt_string_to_utc(start_date)
+        end_date = self.naive_dt_string_to_utc(end_date)
         #Read in data and create datetime column from dt_iso
         weather_data = pd.read_csv(DATA_DIR / 'nyc_weather_bulk_2000_2024.csv')
-        weather_data['datetime'] = pd.to_datetime(weather_data['dt_iso'], format='%Y-%m-%d %H:%M:%S +0000 UTC', utc=True).dt.tz_convert('US/Eastern').dt.tz_localize(None)
+        weather_data['datetime'] = pd.to_datetime(weather_data['dt_iso'], format='%Y-%m-%d %H:%M:%S +0000 UTC', utc=True).dt.tz_convert('US/Eastern')
         weather_data.drop(columns=['dt', 'dt_iso'], inplace=True)
         weather_data.set_index('datetime', inplace=True)
         
@@ -171,19 +191,22 @@ class NYCTripData:
         
         # Get one-hot encoded column names
         one_hot_cols = [col for col in weather_data_encoded.columns if 'encoded_' in col] 
-        non_one_hot_cols = [col for col in weather_data_encoded.columns if col not in one_hot_cols and col != 'dt_iso']
+        non_one_hot_cols = [col for col in weather_data_encoded.columns if col not in one_hot_cols and col != 'datetime']
 
+        
         # Group by 'dt_iso' and apply custom aggregation
         #There are multiple rows for the same dt_iso, just with diff weather_main
         #for the non-encoded columns, take the first row as there are no conflicts in the non-encoded cols
         #for the encoded columns, essentially perform an "or" operation
-        weather_data = weather_data_encoded.groupby('dt_iso').agg(
+        weather_data = weather_data_encoded.groupby('datetime').agg(
             {
                 **{col: 'first' for col in non_one_hot_cols},  
                 **{col: 'max' for col in one_hot_cols}  
             }
         ).reset_index()
         
+        weather_data['datetime'] = weather_data['datetime'].dt.tz_localize(None)
+        weather_data.set_index('datetime', inplace=True)
         #fill in NA values with 0
         weather_data.fillna(FILL_NA_VALUES, inplace=True)
         weather_data.fillna(method='ffill', inplace=True)
