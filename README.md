@@ -15,10 +15,9 @@ The data preprocessing steps are outlined in the jupyter notebook `data_preproce
 
 # Models
 The models used in this project include:
-- ARIMA
-<!-- - SARIMA
-- SARIMAX -->
+- GNN
 - LSTM
+- MLR
 
 # Model evaluation
 The model evaluation steps are outlined in the jupyter notebook `model_evaluation.ipynb` which can be found in the `notebooks` folder. The model evaluation steps include:
