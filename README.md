@@ -1,17 +1,15 @@
-# Introduction
-
+# Data Mining Course Project: NYC Rideshare Demand Forecasting
 
 # Data
-The data used in this project is the New York City Taxi and Limousine Commission (TLC) Trip Record Data which is available at https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+The data used in this project is the New York City Taxi and Limousine Commission (TLC) Trip Record Data which is publicly available at https://www1.nyc.gov/site/tlc/about/tlc-trip-record-data.page
 
 # Data Preprocessing
-The data preprocessing steps are outlined in the jupyter notebook `data_preprocessing.ipynb` which can be found in the `notebooks` folder. The data preprocessing steps include:
-- Loading the data
-- Checking for missing values
-- Removing duplicates
+The data preprocessing steps are outlined in the jupyter notebooks `nyc_rideshare_preprocessing.ipynb` which can be found in the `protoboard` folder. The data preprocessing steps include:
 - Filtering the data
 - Feature engineering
 - Exploratory data analysis
+
+The final developed data loaders can be found in `src.utils` folder with names `nyc_trip_loader.py` and `nyc_taxi_zones.py` which are responsible for the pre-processing of the datasets.
 
 # Models
 The models used in this project include:
@@ -19,17 +17,14 @@ The models used in this project include:
 - LSTM
 - MLR
 
-# Model evaluation
-The model evaluation steps are outlined in the jupyter notebook `model_evaluation.ipynb` which can be found in the `notebooks` folder. The model evaluation steps include:
+# Model implementation and evaluations
+The model implementation and evaluation steps are outlined in the jupyter notebooks `gnn.ipynb`, `MLR.ipynb` which can be found in the `protoboard` folder. The model evaluation steps include:
 - Model training
 - Model evaluation
 - Model comparison
 
 # Results
-The results of the project are outlined in the jupyter notebook `results.ipynb` which can be found in the `notebooks` folder. The results include:
-- Data preprocessing results
-- Model evaluation results
-
+The results of the project can be found in the `docs` folder in the final and intermediate reports.
 <!-- # Conclusion -->
 <!-- The results of the project show that the LSTM model outperforms the other models in terms of forecasting accuracy. The LSTM model is able to capture the complex patterns in the data and provide accurate forecasts. -->
 
