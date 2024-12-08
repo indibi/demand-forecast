@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<style>
+form {
+    margin: auto;
+    width: 35%;
+}
+
+.result {
+    margin: auto;
+    width: 35%;
+    border: 1px solid #ccc;
+}
+</style>
+
+<head>
+    <title>NYC Taxi Demand</title>
+</head>
+<form action="{{ url_for('main') }}" method="POST">
+    <fieldset>
+        <legend>Input values:</legend>
+        Pulocationid:
+        <input name="PULocationID" type="number" required>
+        <br>
+        Hour:
+        <input name="hour" type="number" required>
+        <br>
+        Dayofweek:
+        <input name="dayofweek" type="number" required>
+        <br>
+        Dayofyear:
+        <input name="dayofyear" type="number" required>
+        <br>
+        Month:
+        <input name="month" type="number" required>
+        <br>
+        Quarter:
+        <input name="quarter" type="number" required>
+        <br>
+        X:
+        <input name="x" type="number" required>
+        <br>
+        Y:
+        <input name="y" type="number" required>
+        <br>
+        Temp:
+        <input name="temp" type="number" required>
+        <br>
+        Temp_Min:
+        <input name="temp_min" type="number" required>
+        <br>
+        Temp_Max:
+        <input name="temp_max" type="number" required>
+        <br>
+        Pressure:
+        <input name="pressure" type="number" required>
+        <br>
+        Humidity:
+        <input name="humidity" type="number" required>
+        <br>
+        Wind_Speed:
+        <input name="wind_speed" type="number" required>
+        <br>
+        Wind_Deg:
+        <input name="wind_deg" type="number" required>
+        <br>
+        Wind_Gust:
+        <input name="wind_gust" type="number" required>
+        <br>
+        Clouds_All:
+        <input name="clouds_all" type="number" required>
+        <br>
+        Rain_1H:
+        <input name="rain_1h" type="number" required>
+        <br>
+        Rain_3H:
+        <input name="rain_3h" type="number" required>
+        <br>
+        Snow_1H:
+        <input name="snow_1h" type="number" required>
+        <br>
+        Snow_3H:
+        <input name="snow_3h" type="number" required>
+        <br>
+        Weather_Main_Clear:
+        <input name="weather_main_Clear" type="number" required>
+        <br>
+        Weather_Main_Clouds:
+        <input name="weather_main_Clouds" type="number" required>
+        <br>
+        Weather_Main_Fog:
+        <input name="weather_main_Fog" type="number" required>
+        <br>
+        Weather_Main_Haze:
+        <input name="weather_main_Haze" type="number" required>
+        <br>
+        Weather_Main_Mist:
+        <input name="weather_main_Mist" type="number" required>
+        <br>
+        Weather_Main_Rain:
+        <input name="weather_main_Rain" type="number" required>
+        <br>
+        Weather_Main_Snow:
+        <input name="weather_main_Snow" type="number" required>
+        <br>
+        Weather_Main_Thunderstorm:
+        <input name="weather_main_Thunderstorm" type="number" required>
+        <br>
+        <br>
+        <input type="submit">
+    </fieldset>
+</form>
+<br>
+<div class="result" align="center">
+    {% if result %}
+    	{% for variable, value in original_input.items() %}
+    		<b>{{ variable }}</b> : {{ value }} "  "
+    	{% endfor %}
+		<br>
+    	<br> Predicted number of pickups in zone:
+   		<p style="font-size:50px">{{ result }}</p>
+    {% endif %}
+</div>
+
+</html>
